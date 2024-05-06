@@ -5,15 +5,16 @@
 class Ball
 {
 public:
+
+	Ball();
+	Ball(const int& h, const int& w, const Transform& trans);
+	Ball(const int& h, const int& w);
+
 	Transform transform;
 
 	SDL_Rect rect;
 
-	//auto get_height() -> int;
-	//auto get_width() -> int;
-
 	int height;
 	int width;
-private:
 	
 };

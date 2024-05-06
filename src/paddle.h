@@ -6,21 +6,17 @@
 class Paddle
 {
 public:
-	Paddle(const int& h, const int& w);
-
+	
 	Paddle();
+	Paddle(const int& h, const int& w);
+	Paddle(const int& h, const int& w, const Transform& trans);
 
 	Transform transform;
 	
 	SDL_Rect rect;
 	
-	/*auto get_height() -> int;
-	auto get_width() -> int;*/
-
 	int height;
 	int width;
 	
-	
 
-private:
 };

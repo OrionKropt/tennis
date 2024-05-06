@@ -6,39 +6,43 @@ Game::Game()
     window_height = 768;
     window_width = 1024;
 
-    paddle_1.height = 100;
-    paddle_1.width = 15;
-    paddle_2.height = 100;
-    paddle_2.width = 15;
-    paddle_1.transform.position = vector2
+    paddle_1 = Paddle
     (
-        25,
-        window_height / 2
+        100,                                               // height
+        15,                                                // width
+        Transform
+        (
+            vector2(25, window_height / 2),                // position
+            vector2(0, 300),                               // velocity
+            0                                              // dir
+        )
     );
-    paddle_2.transform.position = vector2
+
+    paddle_2 = Paddle
     (
-        window_width - 25,
-        window_height / 2
+        100,                                               // height
+        15,                                                // width
+        Transform
+        (
+            vector2(window_width - 25, window_height / 2), // position
+            vector2(0, 300),                               // velocity
+            0                                              // dir
+        )
     );
-   
-    paddle_1.transform.velocity = paddle_2.transform.velocity = vector2(0, 300);
 
-    paddle_1.transform.dir = paddle_2.transform.dir = 0;
+    ball = Ball
+    (
+        15,                                                // height
+        15,                                                // width
+        Transform
+        (
+            vector2(window_width / 2, window_height / 2),  // position
+            vector2(-300, 275),                            // velocity
+            0                                              // direction
+        ) 
+    );
 
-    ball.transform.position = vector2(window_width / 2, window_height / 2);
-    ball.transform.velocity = vector2(-300, 275);
-    ball.height = ball.width = 15;
     ticks_count = 0;
-
-    /*paddle_pos.x = ball_pos.x = 1024 / 2;
-    paddle_pos.y = ball_pos.y = 768 / 2;*/
-
-    /*ball_vel.x = -285.0f;
-    ball_vel.y = 250.0f;*/
-
-    //paddle_dir = 0;
-
-   
 }
 
 bool Game::initialize()
@@ -52,7 +56,7 @@ bool Game::initialize()
      
    
 
-    window = SDL_CreateWindow("Chapter 1",
+    window = SDL_CreateWindow("tennis",
         100,   // Top left x of window
 
         100,   // Top left y of window
@@ -160,6 +164,8 @@ void Game::update_game()
     if (delta_time > 0.05f)
         delta_time = 0.05f;
 
+    // Paddle movement
+
     if (paddle_1.transform.dir != 0)
     {
       
@@ -175,7 +181,6 @@ void Game::update_game()
     }
     if (paddle_2.transform.dir != 0)
     {
-        
         paddle_2.transform.position += paddle_2.transform.velocity * paddle_2.transform.dir * delta_time;
 
         if (paddle_2.transform.position.y < (-paddle_2.height / 2.0f + paddle_2.width))
@@ -186,30 +191,31 @@ void Game::update_game()
             paddle_2.transform.position.y = window_height - paddle_2.height / 2.0f - paddle_2.width;
     }
 
+    // ball movement
     ball.transform.position += ball.transform.velocity * delta_time;
    
-
+    // Collision
     if (ball.transform.position.y <= thickness && ball.transform.velocity.y < 0)
         ball.transform.velocity.y *= -1;
     else if (ball.transform.position.y >= (window_height - thickness) && ball.transform.velocity.y > 0)
         ball.transform.velocity.y *= -1;
 
-    float dif = fabs(ball.transform.position.y - paddle_1.transform.position.y);
+    float dif = fabs((ball.transform.position.y + ball.height / 2) - (paddle_1.transform.position.y + paddle_1.height / 2));
     if 
         (
             dif <= (paddle_1.height / 2) &&
             ball.transform.position.x <= (paddle_1.transform.position.x + (paddle_1.width / 2)) &&
-            ball.transform.position.x >= (paddle_1.transform.position.x + (paddle_1.width / 2) - 5) &&
+            ball.transform.position.x >= (paddle_1.transform.position.x - (paddle_1.width / 2)) &&
             ball.transform.velocity.x < 0
         )
         ball.transform.velocity.x *= -1;
 
-    dif = fabs(paddle_2.transform.position.y - ball.transform.position.y);
+    dif = fabs((ball.transform.position.y + ball.height / 2) - (paddle_2.transform.position.y + paddle_2.height / 2));
     if 
         (
             dif <= (paddle_2.height / 2) &&
             ball.transform.position.x >= (paddle_2.transform.position.x - (paddle_2.width / 2)) &&
-            ball.transform.position.x <= (paddle_2.transform.position.x - (paddle_2.width / 2) + 5) &&
+            ball.transform.position.x <= (paddle_2.transform.position.x + (paddle_2.width / 2)) &&
             ball.transform.velocity.x > 0
         )
         ball.transform.velocity.x *= -1;
@@ -270,18 +276,13 @@ void Game::generate_output()
         255
     );
 
+    // Drow ball
+
     ball.rect.x = static_cast<int>(ball.transform.position.x - ball.width / 2);
-    ball.rect.y = static_cast<int>(ball.transform.position.y - ball.width / 2);
+    ball.rect.y = static_cast<int>(ball.transform.position.y - ball.height / 2);
     ball.rect.w = ball.rect.h = ball.height;
    
-
-  /*  SDL_Rect ball
-    {
-        static_cast<int>(ball .x - thickness / 2),
-        static_cast<int>(ball_pos.y - thickness / 2),
-        thickness,
-        thickness
-    };*/
+    // Drow paddle
 
     paddle_1.rect.x = static_cast<int>(paddle_1.transform.position.x);
     paddle_1.rect.y = static_cast<int>(paddle_1.transform.position.y);
@@ -292,19 +293,12 @@ void Game::generate_output()
     paddle_2.rect.y = static_cast<int>(paddle_2.transform.position.y);
     paddle_2.rect.w = paddle_2.width;
     paddle_2.rect.h = paddle_2.height;
-    /*SDL_Rect paddle
-    {
-        static_cast<int>(paddle_pos.x - 500),
-        static_cast<int>(paddle_pos.y - thickness / 2),
-        thickness,
-        paddle_h
-    };*/
+
 
     SDL_RenderFillRect(renderer, &ball.rect);
     SDL_RenderFillRect(renderer, &paddle_1.rect);
     SDL_RenderFillRect(renderer, &paddle_2.rect);
-   
-    SDL_RenderPresent(renderer);
 
-    
+
+    SDL_RenderPresent(renderer);
 }

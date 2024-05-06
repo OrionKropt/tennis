@@ -2,6 +2,7 @@
 #include "paddle.h"
 #include "ball.h"
 
+
 class Game
 {
 public:
@@ -27,19 +28,10 @@ private:
 	Paddle paddle_2;
 	
 	Ball ball;
-	
-	
-	//vector2 paddle_pos;
-	//int paddle_dir;
-	//const int paddle_h = 100;
-//	vector2 ball_pos;
-	//vector2 ball_vel;
-
-
 
 	Uint32 ticks_count;
 
-	const int thickness = 15;
+	const int thickness = 15; // walls's thikness
 
 	bool is_running;
 
