@@ -1,5 +1,8 @@
 #include "game.h"
 
+
+
+
 Game::Game() 
 {
     // Window size
@@ -14,7 +17,8 @@ Game::Game()
         (
             vector2(25, window_height / 2),                // position
             vector2(0, 300),                               // velocity
-            0                                              // dir
+            0,                                             // dir
+            0
         )
     );
 
@@ -26,11 +30,12 @@ Game::Game()
         (
             vector2(window_width - 25, window_height / 2), // position
             vector2(0, 300),                               // velocity
-            0                                              // dir
+            0,                                             // dir
+            0                                              // acceleration
         )
     );
 
-    ball = Ball
+    ball_1 = Ball
     (
         15,                                                // height
         15,                                                // width
@@ -38,11 +43,26 @@ Game::Game()
         (
             vector2(window_width / 2, window_height / 2),  // position
             vector2(-300, 275),                            // velocity
-            0                                              // direction
+            0,                                             // direction
+            1.1                                            // acceleration
         ) 
     );
 
+    ball_2 = Ball
+    (
+        15,                                                // height
+        15,                                                // width
+        Transform
+        (
+            vector2(window_width / 2, window_height / 2),  // position
+            vector2(300, 325),                             // velocity
+            0,                                             // direction
+            1.1                                            // acceleration
+        )
+    );
+
     ticks_count = 0;
+    ball_respawn_timer = 0;
 }
 
 bool Game::initialize()
@@ -53,8 +73,15 @@ bool Game::initialize()
         SDL_Log("Unable to initialize SDL: %s", SDL_GetError());
         return false;
     }
-     
-   
+    
+    sdl_res = TTF_Init();
+    if (sdl_res) 
+    {
+        SDL_Log("Unable to initialize SDL_TTF: %s", TTF_GetError());
+        return false;
+    }
+
+
 
     window = SDL_CreateWindow("tennis",
         100,   // Top left x of window
@@ -108,6 +135,8 @@ void Game::shutdown()
     SDL_DestroyRenderer(renderer);
 
     SDL_DestroyWindow(window);
+
+    TTF_Quit();
 
     SDL_Quit();
 
@@ -192,36 +221,13 @@ void Game::update_game()
     }
 
     // ball movement
-    ball.transform.position += ball.transform.velocity * delta_time;
+    ball_1.transform.position += ball_1.transform.velocity * delta_time;
+    ball_2.transform.position += ball_2.transform.velocity * delta_time;
    
     // Collision
-    if (ball.transform.position.y <= thickness && ball.transform.velocity.y < 0)
-        ball.transform.velocity.y *= -1;
-    else if (ball.transform.position.y >= (window_height - thickness) && ball.transform.velocity.y > 0)
-        ball.transform.velocity.y *= -1;
-
-    float dif = fabs((ball.transform.position.y + ball.height / 2) - (paddle_1.transform.position.y + paddle_1.height / 2));
-    if 
-        (
-            dif <= (paddle_1.height / 2) &&
-            ball.transform.position.x <= (paddle_1.transform.position.x + (paddle_1.width / 2)) &&
-            ball.transform.position.x >= (paddle_1.transform.position.x - (paddle_1.width / 2)) &&
-            ball.transform.velocity.x < 0
-        )
-        ball.transform.velocity.x *= -1;
-
-    dif = fabs((ball.transform.position.y + ball.height / 2) - (paddle_2.transform.position.y + paddle_2.height / 2));
-    if 
-        (
-            dif <= (paddle_2.height / 2) &&
-            ball.transform.position.x >= (paddle_2.transform.position.x - (paddle_2.width / 2)) &&
-            ball.transform.position.x <= (paddle_2.transform.position.x + (paddle_2.width / 2)) &&
-            ball.transform.velocity.x > 0
-        )
-        ball.transform.velocity.x *= -1;
-
- 
-    
+   
+    collisions(ball_1);
+    collisions(ball_2);
 
 }
 
@@ -251,10 +257,10 @@ void Game::generate_output()
     //                    walls
     SDL_Rect  wall_top
     {
-       0,        // Top x
-       0,        // Top y
+       0,                // Top x
+       0,                // Top y
        window_width,     // Width
-       thickness // Height 
+       thickness         // Height 
     };
 
     SDL_Rect wall_down
@@ -278,9 +284,13 @@ void Game::generate_output()
 
     // Drow ball
 
-    ball.rect.x = static_cast<int>(ball.transform.position.x - ball.width / 2);
-    ball.rect.y = static_cast<int>(ball.transform.position.y - ball.height / 2);
-    ball.rect.w = ball.rect.h = ball.height;
+    ball_1.rect.x = static_cast<int>(ball_1.transform.position.x - ball_1.width / 2);
+    ball_1.rect.y = static_cast<int>(ball_1.transform.position.y - ball_1.height / 2);
+    ball_1.rect.w = ball_1.rect.h = ball_1.height;
+
+    ball_2.rect.x = static_cast<int>(ball_2.transform.position.x - ball_2.width / 2);
+    ball_2.rect.y = static_cast<int>(ball_2.transform.position.y - ball_2.height / 2);
+    ball_2.rect.w = ball_2.rect.h = ball_2.height;
    
     // Drow paddle
 
@@ -295,10 +305,53 @@ void Game::generate_output()
     paddle_2.rect.h = paddle_2.height;
 
 
-    SDL_RenderFillRect(renderer, &ball.rect);
+    SDL_RenderFillRect(renderer, &ball_1.rect);
+    SDL_RenderFillRect(renderer, &ball_2.rect);
     SDL_RenderFillRect(renderer, &paddle_1.rect);
     SDL_RenderFillRect(renderer, &paddle_2.rect);
 
 
     SDL_RenderPresent(renderer);
+}
+
+void Game::collisions(Ball& ball)
+{
+    if (ball.transform.position.y <= thickness && ball.transform.velocity.y < 0)
+        ball.transform.velocity.y *= -1;
+    else if (ball.transform.position.y >= (window_height - thickness) && ball.transform.velocity.y > 0)
+        ball.transform.velocity.y *= -1;
+
+
+    float dif = fabs((ball.transform.position.y + ball.height / 2) - (paddle_1.transform.position.y + paddle_1.height / 2));
+    if
+        (
+            dif <= (paddle_1.height / 2) &&
+            ball.transform.position.x <= (paddle_1.transform.position.x + (paddle_1.width / 2)) &&
+            ball.transform.position.x >= (paddle_1.transform.position.x - (paddle_1.width / 2)) &&
+            ball.transform.velocity.x < 0
+            )
+        ball.transform.velocity.x *= -ball.transform.acceleration;
+
+    dif = fabs((ball.transform.position.y + ball.height / 2) - (paddle_2.transform.position.y + paddle_2.height / 2));
+    if
+        (
+            dif <= (paddle_2.height / 2) &&
+            ball.transform.position.x >= (paddle_2.transform.position.x - (paddle_2.width / 2)) &&
+            ball.transform.position.x <= (paddle_2.transform.position.x + (paddle_2.width / 2)) &&
+            ball.transform.velocity.x > 0
+            )
+        ball.transform.velocity.x *= -ball.transform.acceleration;
+
+
+    if (ball.transform.position.x < 0 || ball.transform.position.x > window_width)
+    {
+        if (ball_respawn_timer == 0)
+            ball_respawn_timer = SDL_GetTicks();
+        else if (ball_respawn_delay <= (ticks_count - ball_respawn_timer))
+        {
+            ball.transform.position = vector2(window_height / 2, window_width / 2);
+            ball.transform.velocity = vector2(-300, 275) * (((rand() % 2) != 1) ? -1 : 1);
+            ball_respawn_timer = 0;
+        }
+    }
 }
